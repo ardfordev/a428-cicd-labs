@@ -1,53 +1,46 @@
-pipeline {
-    agent {
-        docker {
-            image 'node:iron-slim'
-            args '-p 3000:3000'
-        }
-    }
-    environment {
-        CI = 'true'
-        HOST: '0.0.0.0'
-    }
-    stages {
-        stage('Setup') {
-            steps {
-                // Add execute permissions to scripts
-                sh 'chmod +x jenkins/scripts/test.sh'
-                sh 'chmod +x jenkins/scripts/deliver.sh'
-                sh 'chmod +x jenkins/scripts/kill.sh'
-            }
-        }
-        stage('Install') {
-            steps {
-                sh 'npm install'
-            }
-        }
-        stage('Type Check & Build') {
-            steps {
-                sh 'npm run build'
-            }
-        }
-        stage('Lint') {
-            steps {
-                sh 'npm run lint'
-            }
-        }
-        stage('Test') {
-            steps {
-                sh 'sh ./jenkins/scripts/test.sh'
-            }
-        }
-        stage('Preview') {
-            steps {
-                sh 'npm run preview -- --host 0.0.0.0'
-            }
-        }
-        stage('Deliver') {
-            steps {
-                sh 'sh ./jenkins/scripts/deliver.sh'
-                input message: 'Finished using the website? (Click "Proceed" to continue)'
-                sh 'sh ./jenkins/scripts/kill.sh'
+node {
+    def app
+
+    // Setup Docker container
+    docker.image('node:iron-slim').inside('-p 3000:3000') {
+        withEnv(['CI=true', 'HOST=0.0.0.0']) {
+            try {
+                stage('Setup') {
+                    // Add execute permissions to scripts
+                    sh 'chmod +x jenkins/scripts/test.sh'
+                    sh 'chmod +x jenkins/scripts/deliver.sh'
+                    sh 'chmod +x jenkins/scripts/kill.sh'
+                }
+
+                stage('Install') {
+                    sh 'npm install'
+                }
+
+                stage('Type Check & Build') {
+                    sh 'npm run build'
+                }
+
+                stage('Lint') {
+                    sh 'npm run lint'
+                }
+
+                stage('Test') {
+                    sh 'sh ./jenkins/scripts/test.sh'
+                }
+
+                stage('Preview') {
+                    sh 'npm run preview -- --host 0.0.0.0'
+                }
+
+                stage('Deliver') {
+                    sh 'sh ./jenkins/scripts/deliver.sh'
+                    input message: 'Finished using the website? (Click "Proceed" to continue)'
+                    sh 'sh ./jenkins/scripts/kill.sh'
+                }
+            } catch (e) {
+                // If there was an exception thrown, mark the build as failed
+                currentBuild.result = 'FAILED'
+                throw e
             }
         }
     }
