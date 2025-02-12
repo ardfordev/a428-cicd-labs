@@ -1,20 +1,37 @@
 #!/usr/bin/env sh
 
-echo 'The following "npm" command (if executed) installs the "cross-env"'
-echo 'dependency into the local "node_modules" directory, which will ultimately'
-echo 'be stored in the Jenkins home directory. As described in'
-echo 'https://docs.npmjs.com/cli/install, the "--save-dev" flag causes the'
-echo '"cross-env" dependency to be installed as "devDependencies". For the'
-echo 'purposes of this tutorial, this flag is not important. However, when'
-echo 'installing this dependency, it would typically be done so using this'
-echo 'flag. For a comprehensive explanation about "devDependencies", see'
-echo 'https://stackoverflow.com/questions/18875674/whats-the-difference-between-dependencies-devdependencies-and-peerdependencies.'
+echo 'Setting up and running tests for Vite + React + TypeScript project'
+
+# First ensure all dependencies are installed
+echo 'Installing dependencies...'
 set -x
-# npm install --save-dev cross-env
+npm install
 set +x
 
-echo 'The following "npm" command tests that your simple Node.js/React'
-echo 'application renders satisfactorily. This command actually invokes the test'
-echo 'runner Jest (https://facebook.github.io/jest/).'
+# Type checking
+echo 'Running TypeScript compilation check...'
 set -x
-npm test
+npm run tsc
+set +x
+
+# Linting
+echo 'Running ESLint checks...'
+set -x
+npm run lint
+set +x
+
+# Run tests (Note: You'll need to add testing configuration)
+echo 'To run tests, you will need to:'
+echo '1. Install testing dependencies like Vitest:'
+echo '   npm install -D vitest @testing-library/react @testing-library/jest-dom'
+echo '2. Add test script to package.json:'
+echo '   "test": "vitest"'
+echo '3. Create test configuration'
+
+# Build check
+echo 'Running build check...'
+set -x
+npm run build
+set +x
+
+echo 'All checks completed.'
