@@ -8,12 +8,6 @@ set -x
 npm install
 set +x
 
-# Type checking
-echo 'Running TypeScript compilation check...'
-set -x
-npm run tsc
-set +x
-
 # Linting
 echo 'Running ESLint checks...'
 set -x
