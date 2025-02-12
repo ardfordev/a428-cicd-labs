@@ -2,28 +2,51 @@ pipeline {
     agent {
         docker {
             image 'node:iron-slim'
-            args '-p 3000:3000'
+            args '-p 5173:5173' // Changed to Vite's default port
         }
     }
     environment {
         CI = 'true'
     }
     stages {
-        stage('Build') {
+        stage('Setup') {
+            steps {
+                // Add execute permissions to scripts
+                sh 'chmod +x jenkins/scripts/test.sh'
+                sh 'chmod +x jenkins/scripts/deliver.sh'
+                sh 'chmod +x jenkins/scripts/kill.sh'
+            }
+        }
+        stage('Install') {
             steps {
                 sh 'npm install'
             }
         }
+        stage('Type Check') {
+            steps {
+                sh 'npm run tsc'
+            }
+        }
+        stage('Lint') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
         stage('Test') {
             steps {
-                sh './jenkins/scripts/test.sh'
+                sh 'sh ./jenkins/scripts/test.sh'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'npm run build'
             }
         }
         stage('Deliver') {
             steps {
-                sh './jenkins/scripts/deliver.sh'
+                sh 'sh ./jenkins/scripts/deliver.sh'
                 input message: 'Finished using the website? (Click "Proceed" to continue)'
-                sh './jenkins/scripts/kill.sh'
+                sh 'sh ./jenkins/scripts/kill.sh'
             }
         }
     }
