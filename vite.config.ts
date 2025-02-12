@@ -1,6 +1,6 @@
 import path from "path"
 import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
+import { defineConfig } from "vitest/config"
  
 export default defineConfig({
   plugins: [react()],
@@ -12,6 +12,11 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: true  // Force Vite to use specified port
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
   },
   resolve: {
     alias: {
