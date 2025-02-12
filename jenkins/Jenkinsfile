@@ -7,6 +7,7 @@ pipeline {
     }
     environment {
         CI = 'true'
+        HOST: '0.0.0.0'
     }
     stages {
         stage('Setup') {
@@ -24,7 +25,7 @@ pipeline {
         }
         stage('Type Check & Build') {
             steps {
-                sh 'npm run build' // This includes TypeScript compilation as defined in your package.json
+                sh 'npm run build'
             }
         }
         stage('Lint') {
@@ -39,7 +40,7 @@ pipeline {
         }
         stage('Preview') {
             steps {
-                sh 'npm run preview'
+                sh 'npm run preview -- --host 0.0.0.0'
             }
         }
         stage('Deliver') {
