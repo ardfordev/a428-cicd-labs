@@ -13,6 +13,11 @@ export default defineConfig({
     host: true,
     strictPort: true  // Force Vite to use specified port
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
