@@ -3,7 +3,7 @@ node {
 
     // Setup Docker container
     docker.image('node:iron-slim').inside('-p 3000:3000') {
-        withEnv(['CI=true', 'HOST=0.0.0.0']) {
+        withEnv(['CI=true', 'HOST=0.0.0.0', 'PORT=3000']) {
             try {
                 stage('Setup') {
                     // Add execute permissions to scripts
@@ -29,7 +29,7 @@ node {
                 }
 
                 stage('Preview') {
-                    sh 'npm run preview -- --host 0.0.0.0'
+                    sh 'npm run preview -- --host 0.0.0.0 --port 3000 --strictPort'
                 }
 
                 stage('Deliver') {
@@ -38,7 +38,6 @@ node {
                     sh 'sh ./jenkins/scripts/kill.sh'
                 }
             } catch (e) {
-                // If there was an exception thrown, mark the build as failed
                 currentBuild.result = 'FAILED'
                 throw e
             }
