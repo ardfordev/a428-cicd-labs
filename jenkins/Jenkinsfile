@@ -29,7 +29,9 @@ node {
                 }
 
                 stage('Preview') {
-                    sh 'npm run preview -- --host 0.0.0.0 --port 3000 --strictPort'
+                    timeout(time: 3, unit: 'MINUTES') {
+                        sh 'npm run preview -- --host 0.0.0.0 --port 3000 --strictPort'
+                    }
                 }
 
                 stage('Deliver') {
