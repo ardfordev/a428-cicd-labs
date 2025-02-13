@@ -32,46 +32,57 @@ node {
                 stage('Build') {
                     sh 'npm run build'
                 }
+            }
+        }
+        
+        // Preview stage outside of docker container
+        stage('Preview') {
+            // Start preview server
+            sh 'npm run preview -- --port 3000 &'
+            echo 'Preview started at http://localhost:3000'
+            
+            // Wait for 1 minute
+            echo 'Waiting for 1 minute...'
+            sleep(time: 60, unit: 'SECONDS')
+            
+            // Kill preview server
+            sh '''
+                PID=$(lsof -t -i:3000)
+                if [ ! -z "$PID" ]; then
+                    kill $PID
+                fi
+            '''
+            echo 'Preview server stopped'
+        }
+
+        stage('Manual Approval') {
+            input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
+        }
+
+        stage('Deploy') {
+            sshagent([SSH_KEY]) {
+                // Create deployment script
+                sh '''
+                    echo '#!/bin/bash
+                    cd ~/app
+                    pm2 stop all || true
+                    rm -rf dist/*
+                    mv dist_new/* dist/
+                    pm2 start npm --name "react-app" -- start
+                    ' > deploy.sh
+                '''
                 
-                stage('Preview') {
-                    sh './jenkins/scripts/deliver.sh'
-                    // Wait for 1 minute then kill the preview
-                    timeout(time: 1, unit: 'MINUTES') {
-                        sh 'sleep 60'
-                    }
-                    sh './jenkins/scripts/kill.sh'
-                }
-
-                stage('Manual Approval') {
-                    input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
-                }
-
-                stage('Deploy') {
-                    sshagent([SSH_KEY]) {
-                        // Create deployment script
-                        sh '''
-                            echo '#!/bin/bash
-                            cd ~/app
-                            pm2 stop all || true
-                            rm -rf dist/*
-                            mv dist_new/* dist/
-                            pm2 start npm --name "react-app" -- start
-                            ' > deploy.sh
-                        '''
-                        
-                        // Create directory if not exists
-                        sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'mkdir -p ~/app/dist'"
-                        
-                        // Copy build files
-                        sh "scp -r dist/* ${EC2_USER}@${EC2_IP}:~/app/dist_new/"
-                        
-                        // Copy and execute deployment script
-                        sh """
-                            scp deploy.sh ${EC2_USER}@${EC2_IP}:~/app/
-                            ssh ${EC2_USER}@${EC2_IP} 'chmod +x ~/app/deploy.sh && ~/app/deploy.sh'
-                        """
-                    }
-                }
+                // Create directory if not exists
+                sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'mkdir -p ~/app/dist'"
+                
+                // Copy build files
+                sh "scp -r dist/* ${EC2_USER}@${EC2_IP}:~/app/dist_new/"
+                
+                // Copy and execute deployment script
+                sh """
+                    scp deploy.sh ${EC2_USER}@${EC2_IP}:~/app/
+                    ssh ${EC2_USER}@${EC2_IP} 'chmod +x ~/app/deploy.sh && ~/app/deploy.sh'
+                """
             }
         }
     } catch (e) {
