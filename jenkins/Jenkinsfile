@@ -1,16 +1,17 @@
 node {
     def app
+    def SSH_KEY = './react-app.pem' // ID of your EC2 keypair credentials in Jenkins
+    def EC2_USER = 'ec2-user'     // or 'ec2-user' for Amazon Linux
+    def EC2_IP = 'ec2-user@ec2-3-0-18-208.ap-southeast-1.compute.amazonaws.com'  // Your EC2 instance IP
 
     try {
         stage('Checkout') {
-            // Automatically checks out from version control
             checkout scm
         }
 
-        docker.image('node:iron-slim').inside('-p 3000:3000') {
+        docker.image('node:lts-bookworm-slim').inside('-p 3000:3000') {
             withEnv(['CI=true']) {
                 stage('Setup') {
-                    // Add execute permissions to scripts
                     sh 'chmod +x jenkins/scripts/test.sh'
                     sh 'chmod +x jenkins/scripts/deliver.sh'
                     sh 'chmod +x jenkins/scripts/kill.sh'
@@ -29,24 +30,59 @@ node {
                 }
 
                 stage('Build') {
+                    sh 'npm run build'
+                }
+                
+                stage('Preview') {
                     sh './jenkins/scripts/deliver.sh'
-                    input message: 'Finished reviewing the preview build? (Click "Proceed" to continue)'
+                    // Wait for 1 minute then kill the preview
+                    timeout(time: 1, unit: 'MINUTES') {
+                        sh 'sleep 60'
+                    }
                     sh './jenkins/scripts/kill.sh'
+                }
+
+                stage('Manual Approval') {
+                    input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
+                }
+
+                stage('Deploy') {
+                    sshagent([SSH_KEY]) {
+                        // Create deployment script
+                        sh '''
+                            echo '#!/bin/bash
+                            cd ~/app
+                            pm2 stop all || true
+                            rm -rf dist/*
+                            mv dist_new/* dist/
+                            pm2 start npm --name "react-app" -- start
+                            ' > deploy.sh
+                        '''
+                        
+                        // Create directory if not exists
+                        sh "ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'mkdir -p ~/app/dist'"
+                        
+                        // Copy build files
+                        sh "scp -r dist/* ${EC2_USER}@${EC2_IP}:~/app/dist_new/"
+                        
+                        // Copy and execute deployment script
+                        sh """
+                            scp deploy.sh ${EC2_USER}@${EC2_IP}:~/app/
+                            ssh ${EC2_USER}@${EC2_IP} 'chmod +x ~/app/deploy.sh && ~/app/deploy.sh'
+                        """
+                    }
                 }
             }
         }
     } catch (e) {
-        // If there was an exception thrown, the build failed
         currentBuild.result = "FAILED"
         throw e
     } finally {
-        // Success or failure, always send notifications
         notifyBuildStatus()
     }
 }
 
 def notifyBuildStatus() {
-    // Logic for notifications can be added here
     if (currentBuild.result == "FAILED") {
         echo "Build failed - send notification if needed"
     } else {
