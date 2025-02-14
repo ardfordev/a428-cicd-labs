@@ -1,9 +1,7 @@
 node {
     def app
-    def imageRegistry = 'ardfordev'  // Replace with your Docker registry
-    def imageName = 'vite-react-app'
-    def imageTag = "${BUILD_NUMBER}"
-    def ec2IP = '3.0.18.208'  // Replace with your EC2 IP
+    def ec2IP = '3.0.18.208'
+    def imageTag = "latest"
 
     try {
         stage('Checkout') {
@@ -30,27 +28,32 @@ node {
             }
         }
 
-        stage('Build Docker Image') {
-            app = docker.build("${imageRegistry}/${imageName}:${imageTag}")
-        }
+        withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
+            try {
+                stage('Build Docker Image') {
+                    sh "docker build -t ardfordev/react-app:${imageTag} ."
+                }
+                stage('Login DockerHub') {
+                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                }
 
-        stage('Push Docker Image') {
-            withCredentials([usernameColonPassword(credentialsId: 'docker', variable: 'dockerhub')]) {
-
-                sh "echo $PASS | docker login -u $USER --password-stdin"
-                app.push()
+                stage('Push Docker Image') {
+                    sh "docker push ardfordev/react-app:${imageTag}"
+                }
+            } finally {
+                sh 'docker logout'
             }
         }
 
         stage('Deploy to EC2') {
             sshagent(['ec2-react-app']) {
-                // Copy docker-compose and nginx config
                 sh """
                     scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ubuntu@${ec2IP}:/home/ubuntu/
                     ssh -o StrictHostKeyChecking=no ubuntu@${ec2IP} '
                         export IMAGE_TAG=${imageTag}
-                        docker compose down
-                        docker compose up -d
+                        docker compose pull
+                        docker compose up -d --remove-orphans
+                        docker system prune -f
                     '
                 """
             }
@@ -59,10 +62,7 @@ node {
         currentBuild.result = "FAILED"
         throw e
     } finally {
-        // Cleanup
         sh 'docker image prune -f'
-        
-        // Notify about build status
         def buildStatus = currentBuild.result ?: 'SUCCESS'
         echo "Build finished with status: ${buildStatus}"
     }
