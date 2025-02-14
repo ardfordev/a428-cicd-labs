@@ -1,9 +1,9 @@
 node {
     def app
-    def imageRegistry = 'your-docker-registry'  // Replace with your Docker registry
+    def imageRegistry = 'ardfordev'  // Replace with your Docker registry
     def imageName = 'vite-react-app'
     def imageTag = "${BUILD_NUMBER}"
-    def ec2IP = 'your-ec2-ip'  // Replace with your EC2 IP
+    def ec2IP = '3.0.18.208'  // Replace with your EC2 IP
 
     try {
         stage('Checkout') {
@@ -35,14 +35,15 @@ node {
         }
 
         stage('Push Docker Image') {
-            withCredentials([usernamePassword(credentialsId: 'docker-login', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+            withCredentials([usernameColonPassword(credentialsId: 'docker', variable: 'dockerhub')]) {
+
                 sh "echo $PASS | docker login -u $USER --password-stdin"
                 app.push()
             }
         }
 
         stage('Deploy to EC2') {
-            sshagent(['ec2-ssh-key']) {
+            sshagent(['ec2-react-app']) {
                 // Copy docker-compose and nginx config
                 sh """
                     scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ubuntu@${ec2IP}:/home/ubuntu/
