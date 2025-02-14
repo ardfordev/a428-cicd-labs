@@ -48,10 +48,10 @@ node {
             sshagent(['ec2-react-app']) {
                 sh """
                     echo "Uploading Docker Compose and Nginx config..."
-                    scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ubuntu@${ec2IP}:/home/ubuntu/
+                    scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
 
                     echo "Deploying to EC2..."
-                    ssh -o StrictHostKeyChecking=no ubuntu@${ec2IP} << EOF
+                    ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} << EOF
                         export IMAGE_TAG=${imageTag}
                         docker compose pull
                         docker compose down
