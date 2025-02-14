@@ -1,69 +1,71 @@
 node {
-    def app
     def ec2IP = '3.0.18.208'
-    def imageTag = "latest"
+    def imageTag = "${env.BUILD_NUMBER}"
+    def imageName = "ardfordev/react-app:${imageTag}"
 
     try {
         stage('Checkout') {
             checkout scm
         }
 
-        docker.image('node:lts-bookworm-slim').inside('-p 3000:3000 --network host') {
-            withEnv(['CI=true']) {
-                stage('Install') {
-                    sh 'npm install'
-                }
+        stage('Build & Test') {
+            docker.image('node:lts-bookworm-slim').inside('-p 3000:3000 --network host') {
+                withEnv(['CI=true']) {
+                    stage('Install Dependencies') {
+                        sh 'npm install'
+                    }
 
-                stage('Lint') {
-                    sh 'npm run lint'
-                }
+                    stage('Lint Code') {
+                        sh 'npm run lint'
+                    }
 
-                stage('Test') {
-                    sh 'npm test'
-                }
+                    stage('Run Tests') {
+                        sh 'npm test'
+                    }
 
-                stage('Build') {
-                    sh 'npm run build'
+                    stage('Build Application') {
+                        sh 'npm run build'
+                    }
                 }
             }
         }
 
-        withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
-            try {
-                stage('Build Docker Image') {
-                    sh "docker build -t ardfordev/react-app:${imageTag} ."
-                }
-                stage('Login DockerHub') {
-                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                }
+        stage('Build Docker Image') {
+            sh "docker build -t ${imageName} ."
+        }
 
-                stage('Push Docker Image') {
-                    sh "docker push ardfordev/react-app:${imageTag}"
-                }
-            } finally {
-                sh 'docker logout'
+        stage('Push Docker Image') {
+            withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                sh """
+                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                    docker push ${imageName}
+                    docker logout
+                """
             }
         }
 
         stage('Deploy to EC2') {
             sshagent(['ec2-react-app']) {
                 sh """
+                    echo "Uploading Docker Compose and Nginx config..."
                     scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ubuntu@${ec2IP}:/home/ubuntu/
-                    ssh -o StrictHostKeyChecking=no ubuntu@${ec2IP} '
+
+                    echo "Deploying to EC2..."
+                    ssh -o StrictHostKeyChecking=no ubuntu@${ec2IP} << EOF
                         export IMAGE_TAG=${imageTag}
                         docker compose pull
+                        docker compose down
                         docker compose up -d --remove-orphans
                         docker system prune -f
-                    '
+                    EOF
                 """
             }
         }
-    } catch (e) {
-        currentBuild.result = "FAILED"
+    } catch (Exception e) {
+        currentBuild.result = "FAILURE"
         throw e
     } finally {
         sh 'docker image prune -f'
-        def buildStatus = currentBuild.result ?: 'SUCCESS'
-        echo "Build finished with status: ${buildStatus}"
+        echo "Build finished with status: ${currentBuild.result ?: 'SUCCESS'}"
     }
 }
