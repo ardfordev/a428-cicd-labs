@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   vite-react-app:
-    image: ardfordev/vite-react-app:latest
+    image: ardfordev/vite-react-app:${IMAGE_TAG}
     container_name: vite-react-app
     restart: unless-stopped
     ports:

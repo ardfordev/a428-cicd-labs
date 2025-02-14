@@ -52,7 +52,7 @@ node {
 
                     echo "Deploying to EC2..."
                     ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} << EOF
-                        export IMAGE_TAG=${imageName}
+                        export IMAGE_TAG=${imageTag}
                         docker-compose pull
                         docker-compose down
                         docker-compose up -d --remove-orphans
