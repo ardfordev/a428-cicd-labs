@@ -46,19 +46,20 @@ node {
 
         stage('Deploy to EC2') {
             sshagent(['ec2-react-app']) {
-                sh """
-                    echo "Uploading Docker Compose and Nginx config..."
-                    scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
+                withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh """
+                        echo "Uploading Docker Compose and Nginx config..."
+                        scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
 
-                    echo "Deploying to EC2..."
-                    ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} << 'ENDSSH'
-                        export IMAGE_TAG=${imageTag}
-                        docker-compose pull
-                        docker-compose down
-                        docker-compose up -d --remove-orphans
-                        docker system prune -f
-                    ENDSSH
-                """
+                        echo "Deploying to EC2..."
+                        ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} 'bash -s' << 'EOF'
+                            IMAGE_TAG=${env.BUILD_NUMBER} docker-compose pull
+                            IMAGE_TAG=${env.BUILD_NUMBER} docker-compose down
+                            IMAGE_TAG=${env.BUILD_NUMBER} docker-compose up -d --remove-orphans
+                            docker system prune -f
+        EOF
+                    """
+                }
             }
         }
     } catch (Exception e) {
