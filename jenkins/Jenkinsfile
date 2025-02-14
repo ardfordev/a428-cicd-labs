@@ -1,6 +1,6 @@
 node {
     def app
-    def SSH_KEY = '${WORKSPACE}/react-app.pem' // ID of your EC2 keypair credentials in Jenkins
+    def SSH_KEY = '${WORKSPACE}/jenkins/react-app.pem' // ID of your EC2 keypair credentials in Jenkins
     def EC2_USER = 'ec2-user'     // or 'ec2-user' for Amazon Linux
     def EC2_IP = 'ec2-3-0-18-208.ap-southeast-1.compute.amazonaws.com'  // Your EC2 instance IP
 
