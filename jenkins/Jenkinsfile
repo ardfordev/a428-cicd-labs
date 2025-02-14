@@ -51,13 +51,13 @@ node {
                     scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
 
                     echo "Deploying to EC2..."
-                    ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} << EOF
+                    ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} << ENDSSH
                         export IMAGE_TAG=${imageTag}
                         docker-compose pull
                         docker-compose down
                         docker-compose up -d --remove-orphans
                         docker system prune -f
-                    EOF
+                    ENDSSH
                 """
             }
         }
