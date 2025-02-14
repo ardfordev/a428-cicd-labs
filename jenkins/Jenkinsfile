@@ -38,7 +38,7 @@ node {
                         // Wait for 1 minute
                         echo 'Application is now running at http://localhost:3000'
                         echo 'Waiting for 1 minute...'
-                        sleep(time: 60, unit: 'SECONDS')
+                        sleep(time: 10, unit: 'SECONDS')
                         
                         // Kill preview using kill.sh
                         sh './jenkins/scripts/kill.sh'
