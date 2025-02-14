@@ -52,18 +52,28 @@ node {
                         scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
 
                         echo "Deploying to EC2..."
-                        ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} /bin/bash << 'EOF'
+                        ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} '
                             cd /home/ec2-user
                             export IMAGE_TAG=${env.BUILD_NUMBER}
+                            
+                            echo "Logging into DockerHub..."
+                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                            
+                            echo "Pulling latest Docker images..."
                             docker-compose pull
+                            
+                            echo "Restarting services..."
                             docker-compose down
                             docker-compose up -d --remove-orphans
+                            
+                            echo "Cleaning up unused Docker resources..."
                             docker system prune -f
-        EOF
+                        '
                     """
                 }
             }
         }
+
     } catch (Exception e) {
         currentBuild.result = "FAILURE"
         throw e
