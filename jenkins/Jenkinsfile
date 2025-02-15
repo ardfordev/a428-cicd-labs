@@ -8,23 +8,15 @@ node {
             checkout scm
         }
 
-        stage('Build & Test') {
+        stage('Build and Test') {
             docker.image('node:lts-bookworm-slim').inside('-p 3000:3000 --network host') {
                 withEnv(['CI=true']) {
                     stage('Install Dependencies') {
                         sh 'npm install'
                     }
 
-                    stage('Lint Code') {
-                        sh 'npm run lint'
-                    }
-
                     stage('Run Tests') {
-                        sh 'npm test'
-                    }
-
-                    stage('Build Application') {
-                        sh 'npm run build'
+                        sh './jenkins/scripts/test.sh'
                     }
                 }
             }
@@ -44,7 +36,11 @@ node {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Manual Approval') {
+            input message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
+        }
+
+        stage('Deploy') {
             sshagent(['ec2-react-app']) {
                 withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh """
@@ -71,6 +67,19 @@ node {
                         '
                     """
                 }
+            }
+
+            echo "Application is running... waiting for 1 minute before stopping."
+            sleep 60
+
+            sshagent(['ec2-react-app']) {
+                sh """
+                    echo "Stopping application..."
+                    ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} '
+                        cd /home/ec2-user
+                        sh ./jenkins/scripts/kill.sh
+                    '
+                """
             }
         }
 
