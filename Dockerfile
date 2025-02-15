@@ -1,5 +1,5 @@
 # Build stage
-FROM node:lts-bookworm-slim as build
+FROM node:lts-bookworm-slim AS build
 
 # Set working directory
 WORKDIR /app
