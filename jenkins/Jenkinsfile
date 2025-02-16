@@ -7,6 +7,11 @@ node {
         stage('Checkout') {
             checkout scm
         }
+        stage('Prepare Scripts') {
+            sh 'chmod +x ./jenkins/scripts/deliver.sh'
+            sh 'chmod +x ./jenkins/scripts/kill.sh'
+            sh 'chmod +x ./jenkins/scripts/test.sh'
+        }
 
         stage('Build and Test') {
             docker.image('node:lts-bookworm-slim').inside('-p 3000:3000 --network host') {
