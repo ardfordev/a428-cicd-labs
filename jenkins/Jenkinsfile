@@ -9,12 +9,12 @@ node {
             docker.image('node:lts-bookworm-slim').inside('-p 3000:3000 --network host') {
                 withEnv(['CI=true']) {
                     sh 'npm install'
+                    sh 'npm run lint'
                 }
             }
         }
 
         stage('Test') {
-            sh 'npm run lint'
             sh 'chmod +x ./jenkins/scripts/test.sh'
             sh './jenkins/scripts/test.sh'
         }
