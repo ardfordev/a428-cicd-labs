@@ -82,8 +82,8 @@ node {
                     echo "Stopping application..."
                     ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} '
                         cd /home/ec2-user
-                        sh 'chmod +x ./jenkins/scripts/kill.sh'
-                        sh ./jenkins/scripts/kill.sh
+                        chmod +x kill.sh
+                        ./kill.sh
                     '
                 """
             }
