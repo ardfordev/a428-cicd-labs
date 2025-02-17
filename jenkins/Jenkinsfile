@@ -4,38 +4,19 @@ node {
     def imageName = "ardfordev/react-app:${imageTag}"
 
     try {
-        stage('Checkout') {
+        stage('Build') {
             checkout scm
-        }
-        
-        stage('Build and Test') {
             docker.image('node:lts-bookworm-slim').inside('-p 3000:3000 --network host') {
                 withEnv(['CI=true']) {
-                    stage('Install Dependencies') {
-                        sh 'npm install'
-                    }
-
-                    stage('Run Tests') {
-                        sh 'npm run lint'
-                        sh 'chmod +x ./jenkins/scripts/test.sh'
-                        sh './jenkins/scripts/test.sh'
-                    }
+                    sh 'npm install'
                 }
             }
         }
 
-        stage('Build Docker Image') {
-            sh "docker build -t ${imageName} ."
-        }
-
-        stage('Push Docker Image') {
-            withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                sh """
-                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                    docker push ${imageName}
-                    docker logout
-                """
-            }
+        stage('Test') {
+            sh 'npm run lint'
+            sh 'chmod +x ./jenkins/scripts/test.sh'
+            sh './jenkins/scripts/test.sh'
         }
 
         stage('Manual Approval') {
@@ -43,6 +24,16 @@ node {
         }
 
         stage('Deploy') {
+            // Build and push Docker image to DockerHub
+            sh "docker build -t ${imageName} ."
+            withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                sh """
+                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                    docker push ${imageName}
+                    docker logout
+                """
+            }
+
             sshagent(['ec2-react-app']) {
                 withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh """
@@ -71,7 +62,7 @@ node {
                 }
             }
 
-            echo "Application is running... waiting for 1 minute before stopping."
+            echo "Application is running... waiting for 1 minute to check stability"
             sleep 60
             echo "Deployment completed. Pipeline execution finished."
         }
