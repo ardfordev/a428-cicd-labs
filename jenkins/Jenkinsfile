@@ -16,6 +16,7 @@ node {
                     }
 
                     stage('Run Tests') {
+                        sh 'npm run lint'
                         sh 'chmod +x ./jenkins/scripts/test.sh'
                         sh './jenkins/scripts/test.sh'
                     }
@@ -46,7 +47,7 @@ node {
                 withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh """
                         echo "Uploading Docker Compose and Nginx config..."
-                        scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf jenkins/scripts/* ec2-user@${ec2IP}:/home/ec2-user/
+                        scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
 
                         echo "Deploying to EC2..."
                         ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} '
@@ -72,20 +73,7 @@ node {
 
             echo "Application is running... waiting for 1 minute before stopping."
             sleep 60
-
-            sshagent(['ec2-react-app']) {
-                sh """
-                    echo "Stopping application..."
-                    ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} '
-                        cd /home/ec2-user
-                        chmod +x deliver.sh
-                        chmod +x kill.sh
-                        chmod +x test.sh
-                        ./deliver.sh
-                        ./kill.sh
-                    '
-                """
-            }
+            echo "Deployment completed. Pipeline execution finished."
         }
 
     } catch (Exception e) {
