@@ -50,7 +50,7 @@ node {
                 withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh """
                         echo "Uploading Docker Compose and Nginx config..."
-                        scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf ec2-user@${ec2IP}:/home/ec2-user/
+                        scp -o StrictHostKeyChecking=no docker-compose.yml nginx.conf jenkins/scripts/* ec2-user@${ec2IP}:/home/ec2-user/
 
                         echo "Deploying to EC2..."
                         ssh -o StrictHostKeyChecking=no ec2-user@${ec2IP} '
